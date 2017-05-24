@@ -6,6 +6,10 @@ Portia aims to automate a number of techniques commonly performed on internal ne
 - Convenience modules
 
 Portia is a genus of jumping spider that feeds on other spiders - known for their intelligent hunting behaviour and problem solving capabilities usually only found in larger animals
+  
+#Slides (Videos will be published shortly)  
+https://docs.google.com/presentation/d/1x_1bjCCD5hwJFWzlHM0lEPOHdWUlfYgjkUYBtdBFEmM/pub?start=false&loop=false&delayms=3000  
+
 
 #Dependencies
 ```

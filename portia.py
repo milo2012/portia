@@ -3678,22 +3678,26 @@ if args.module=="reg":
 if args.module=='keepass':
     print (setColor("\nDumping Keepass Passwords", bold, color="green"))
     tmpResultList=[]
+    tmpDoneList=[]
     for x in accessAdmHostList:
-        ip=x[0]
-        domain=x[1]
-        username=x[2]
-        if len(x[3])==65 and x[3].count(":")==1:
-            passwordHash=x[3]
-            password=None
-        else:
-            password=x[3]
-            passwordHash=None
-        results=getKeepass(ip,domain,username,password,passwordHash)
-        for y in results:
-            if len(y)>0:
-                y=y.strip()
-                if [ip,y] not in tmpResultList:
-                    tmpResultList.append([ip,y])
+        if x[0] not in tmpDoneList:
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            results=getKeepass(ip,domain,username,password,passwordHash)
+            for y in results:
+                if len(y)>0:
+                    y=y.strip()
+                    if [ip,y] not in tmpResultList:
+                        tmpResultList.append([ip,y])
+            tmpDoneList.append(x[0])
+
     if len(tmpResultList)>0:
         print (setColor("\n[+]", bold, color="green"))+" List of Keepass databases and passwords found"                
         for x in tmpResultList:

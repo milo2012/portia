@@ -10,8 +10,8 @@ Portia is a genus of jumping spider that feeds on other spiders - known for thei
 #Slides   
 https://docs.google.com/presentation/d/1x_1bjCCD5hwJFWzlHM0lEPOHdWUlfYgjkUYBtdBFEmM/pub?start=false&loop=false&delayms=3000  
 
-#Videos (Will be adding more soon)
-https://asciinema.org/a/45ry3g26devqcabpugwyz4to5
+#Videos (Will be adding more soon)  
+https://asciinema.org/a/45ry3g26devqcabpugwyz4to5  
 
 #Dependencies
 ```

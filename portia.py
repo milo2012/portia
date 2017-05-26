@@ -1320,7 +1320,7 @@ def tokensPriv(targetIP,domain,username,password,passwordHash):
                                 print (setColor("[+]", bold, color="green"))+" Is '"+str(user1).lower()+"' in 'Administrators' group on Host "+ip+" "+(setColor("Yes", bold, color="green"))
                                 impersonateUser=str(user1).lower()
                             else:
-                                print "[-] Is '"+str(user1).lower()+"' in 'Administrators' group on Host "+ip+" "+(setColor("No", bold, color="no"))
+                                print "[-] Is '"+str(user1).lower()+"' in 'Administrators' group on Host "+ip+" "+(setColor("No", bold, color="red"))
 
                     if len(impersonateUser)>0:                        
                         print (setColor("[+]", bold, color="green"))+" Adding new Domain Admin Account to Host: "+ip

